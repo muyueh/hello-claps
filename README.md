@@ -1,189 +1,80 @@
-# hello-claps
-
 ```mermaid
 gitGraph
-  options
-  {
-    "mainBranchName": "work",
-    "showBranches": true
-  }
-  commit id: "Initial commit" tag: "219ed06"
+  commit id: "Initial commit"
+  branch work
+  checkout work
+  commit id: "Apps Script scaffolding"
+  checkout work
 ```
 
 ```mermaid
 stateDiagram-v2
     [*] --> LocalSetup
-    LocalSetup --> Authenticated : `clasp login`
-    LocalSetup --> Authenticated : `clasp login --creds creds.json`
-    Authenticated --> Cloned : `clasp clone`
-    Cloned --> Synced : `clasp pull`
-    Synced --> Working : Edit source locally / in IDE
-    Working --> Synced : `clasp push`
-    Synced --> OpenInIDE : `clasp open`
-    Synced --> Deployed : `clasp deploy`
-    Deployed --> Synced : Iterate updates
+    LocalSetup --> Editing: update Code.gs or appsscript.json
+    Editing --> ReadyToPush: clasp push
+    ReadyToPush --> [*]: Script updated
 ```
 
 ```mermaid
 sequenceDiagram
-    participant Developer
-    participant Clasp as Clasp CLI
-    participant AppsScript as Google Apps Script API
-    participant Project as Script Project
-
-    Developer->>Clasp: clasp login
-    Clasp->>AppsScript: OAuth consent
-    AppsScript-->>Developer: Auth tokens stored locally
-    Developer->>Clasp: clasp clone 11svChvnGoBUo3ifX822yAJ874MP_uoqelvnfZdooAWx88LoCynst-lZm
-    Clasp->>AppsScript: Request project files
-    AppsScript-->>Clasp: Return source bundles
-    Clasp-->>Developer: Populate local workspace
-    Developer->>Clasp: clasp push
-    Clasp->>AppsScript: Upload local files
-    AppsScript-->>Project: Update project version
-    Developer->>Clasp: clasp deploy
-    Clasp->>AppsScript: Create deployment
-    AppsScript-->>Developer: Deployment URL and ID
+    participant Dev as Developer
+    participant Repo as Repo
+    participant GAS as Apps Script
+    Dev->>Repo: Edit Code.gs / appsscript.json
+    Dev->>Repo: Commit and push git changes
+    Dev->>GAS: clasp push
+    GAS-->>Dev: Deployment confirmation
 ```
 
 ```mermaid
 graph TD
-    Dev[Developer Workstation]
-    CLI[clasp CLI]
-    Repo[Local Project Files]
-    GAS[Google Apps Script Runtime]
-    IDE[Apps Script IDE]
-    Deploy[Published Web App / Add-on]
-
-    Dev --> CLI
-    CLI --> Repo
-    CLI --> GAS
-    Dev --> IDE
-    GAS --> IDE
-    GAS --> Deploy
-    Repo -. version control .-> Dev
+    Dev[Developer workstation]
+    LocalRepo[Local git repo]
+    Clasp[clasp CLI]
+    GoogleDrive[Apps Script project]
+    Dev --> LocalRepo
+    LocalRepo --> Clasp
+    Clasp --> GoogleDrive
 ```
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph User
-        A[Trigger automation]
-        B[Review deployment URL]
+        A[Runs deployed script]
     end
-    subgraph Frontend (Apps Script IDE)
-        C[Configure project settings]
-        D[Inspect execution logs]
+    subgraph Frontend
+        B[Apps Script UI (e.g. Spreadsheet menu)]
     end
-    subgraph Backend (clasp + Apps Script)
-        E[Authenticate via clasp login]
-        F[Sync source with clasp pull/push]
-        G[Deploy with clasp deploy]
+    subgraph Backend
+        C[Code.gs myFunction]
+        D[Apps Script runtime]
     end
-
-    A --> F
-    B --> G
-    C --> F
-    D --> G
-    E --> F
+    A --> B --> C --> D
 ```
 
-## Overview
+# hello-claps
 
-This repository documents the workflow for managing the Google Apps Script project `11svChvnGoBUo3ifX822yAJ874MP_uoqelvnfZdooAWx88LoCynst-lZm` with the [`@google/clasp`](https://github.com/google/clasp) command-line interface.
+This repository contains a minimal [Google Apps Script](https://developers.google.com/apps-script) project managed locally with [`clasp`](https://github.com/google/clasp).
 
-## Prerequisites
+## Project files
 
-1. Install a current [Node.js](https://nodejs.org/) runtime.
-2. Install the clasp CLI globally:
-   ```bash
-   npm install -g @google/clasp
-   ```
-3. Ensure you can sign in with a Google account that has access to the script ID above.
+| File | Purpose |
+| --- | --- |
+| `.clasp.json` | Binds this local folder to script ID `11svChvnGoBUo3ifX822yAJ874MP_uoqelvnfZdooAWx88LoCynst-lZm`. |
+| `.claspignore` | Mirrors the default clasp ignore rules, keeping `node_modules`, `.git`, virtual environments, and other local-only files out of Apps Script pushes. |
+| `appsscript.json` | Apps Script manifest describing timezone, logging options, and runtime preferences. |
+| `Code.gs` | Contains `myFunction()` that logs “Hello, world!” when executed. |
 
-## Authentication
+## Local development workflow
 
-Use clasp to authenticate before interacting with the project.
+1. Install clasp globally if needed: `npm install -g @google/clasp`.
+2. Authenticate with Google: `clasp login`.
+3. Make changes to `Code.gs` or `appsscript.json` as required.
+4. Verify `.claspignore` covers any local folders you do not want to push.
+5. Deploy the updates to the bound script: `clasp push`.
 
-- Standard OAuth consent in the browser:
-  ```bash
-  clasp login
-  ```
-- Service account or headless environments:
-  ```bash
-  clasp login --creds path/to/credentials.json
-  ```
-  The JSON file should contain the OAuth client credentials you created in Google Cloud Console.
+## Editing tips
 
-After logging in, clasp stores tokens in `~/.clasprc.json`. You can check the active account with:
-```bash
-clasp login --status
-```
-
-## Project Initialization
-
-Clone the remote Apps Script project into your local workspace. The script ID is preconfigured for this repository.
-
-```bash
-clasp clone 11svChvnGoBUo3ifX822yAJ874MP_uoqelvnfZdooAWx88LoCynst-lZm
-```
-
-The command creates a `.clasp.json` file that tracks the script ID and populates your local directory with the project files.
-
-## Daily Workflow
-
-Follow the classic pull-edit-push lifecycle to keep your local files synchronized with Apps Script.
-
-1. **Pull the latest code** to ensure your workspace matches the remote project:
-   ```bash
-   clasp pull
-   ```
-2. **Check status** to review pending changes before committing or pushing:
-   ```bash
-   clasp status
-   ```
-3. **Edit locally or in the Apps Script IDE.** Use features such as the built-in debugger, execution transcript, and project settings to refine your scripts.
-4. **Push local changes** back to Apps Script:
-   ```bash
-   clasp push
-   ```
-5. **Open the project** directly in the IDE when you need to work in the browser:
-   ```bash
-   clasp open
-   ```
-6. **Create a version and deploy** your changes:
-   ```bash
-   clasp version "Describe release"
-   clasp deploy --description "Describe deployment"
-   ```
-   Use `clasp deployments` to list existing deployments.
-
-## Deployment Targets
-
-- **Web Apps:** After deploying, clasp returns a web app URL. Share or embed it as needed.
-- **Add-ons / Libraries:** Manage manifest settings (`appsscript.json`) locally and push updates before redeploying.
-
-## Troubleshooting
-
-- Review pending diffs:
-  ```bash
-  clasp status
-  ```
-- Inspect runtime logs to diagnose execution issues:
-  ```bash
-  clasp logs --json
-  ```
-- If authentication expires, rerun `clasp login` or refresh credentials with `clasp login --creds`.
-- When merge conflicts arise, pull the latest script first (`clasp pull`), resolve conflicts locally, then push.
-
-## Apps Script IDE Tips
-
-- Use **Editor > Run > Test deployments** to validate triggers without affecting production.
-- Access **Executions** for real-time logging and stack traces while iterating with clasp.
-- Configure **Project Settings** to manage time zone, execution API, and V8 runtime preferences.
-- Leverage **Version History** to correlate clasp deployments with IDE versions.
-
-## Resources
-
-- [clasp documentation](https://github.com/google/clasp)
-- [Apps Script dashboard](https://script.google.com/)
-- [Apps Script release notes](https://developers.google.com/apps-script/releases)
+- Keep manifest changes in `appsscript.json` consistent with project requirements (timezone, add-on scopes, etc.).
+- Expand `Code.gs` with additional functions while preserving the `myFunction()` example for quick smoke tests.
+- Commit README updates alongside code changes so the diagrams accurately reflect the repository state.
