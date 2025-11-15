@@ -1,80 +1,92 @@
+# hello-claps
+
 ```mermaid
-gitGraph
-  commit id: "Initial commit"
+gitGraph LR
   branch work
   checkout work
-  commit id: "Apps Script scaffolding"
-  checkout work
+  commit id: "Initial commit"
+  commit id: "Set up clasp npm automation"
 ```
 
 ```mermaid
 stateDiagram-v2
-    [*] --> LocalSetup
-    LocalSetup --> Editing: update Code.gs or appsscript.json
-    Editing --> ReadyToPush: clasp push
-    ReadyToPush --> [*]: Script updated
+  [*] --> LoggedOut
+  LoggedOut --> LoggedIn: npm run login
+  LoggedIn --> Synced: npm run pull
+  Synced --> ReadyToDeploy: npm run push
+  ReadyToDeploy --> Deployed: npm run deploy
+  Deployed --> Synced: iterate on scripts
 ```
 
 ```mermaid
 sequenceDiagram
-    participant Dev as Developer
-    participant Repo as Repo
-    participant GAS as Apps Script
-    Dev->>Repo: Edit Code.gs / appsscript.json
-    Dev->>Repo: Commit and push git changes
-    Dev->>GAS: clasp push
-    GAS-->>Dev: Deployment confirmation
+  participant Dev as Developer
+  participant NPM as npm Scripts
+  participant Clasp as @google/clasp CLI
+  Dev->>NPM: npm run login
+  NPM->>Clasp: clasp login
+  Dev->>NPM: npm run push
+  NPM->>Clasp: clasp push (local project)
+  Clasp-->>Dev: Deployment status
+  Dev->>NPM: npm run open
+  NPM->>Clasp: clasp open (Apps Script editor)
 ```
 
 ```mermaid
-graph TD
-    Dev[Developer workstation]
-    LocalRepo[Local git repo]
-    Clasp[clasp CLI]
-    GoogleDrive[Apps Script project]
-    Dev --> LocalRepo
-    LocalRepo --> Clasp
-    Clasp --> GoogleDrive
+flowchart LR
+  subgraph Developer
+    D[Local Workspace]
+    S[npm scripts]
+  end
+  subgraph Google
+    G[Apps Script Project]
+  end
+  D --> S --> G
 ```
 
 ```mermaid
-flowchart TB
-    subgraph User
-        A[Runs deployed script]
-    end
-    subgraph Frontend
-        B[Apps Script UI (e.g. Spreadsheet menu)]
-    end
-    subgraph Backend
-        C[Code.gs myFunction]
-        D[Apps Script runtime]
-    end
-    A --> B --> C --> D
+flowchart LR
+  subgraph Developer
+    direction TB
+    A1[Write/Update Apps Script files]
+    A2[Run npm run push]
+  end
+  subgraph Frontend
+    direction TB
+    B1[Review deployment status]
+    B2[Open editor via npm run open]
+  end
+  subgraph Backend
+    direction TB
+    C1[Receive clasp push]
+    C2[Create deployments]
+  end
+  A1 --> A2 --> B1 --> B2 --> C1 --> C2
 ```
 
-# hello-claps
+## Getting started
 
-This repository contains a minimal [Google Apps Script](https://developers.google.com/apps-script) project managed locally with [`clasp`](https://github.com/google/clasp).
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Authenticate with Google using the local CLI provided by this project:
+   ```bash
+   npm run login
+   ```
 
-## Project files
+## Available npm scripts
 
-| File | Purpose |
-| --- | --- |
-| `.clasp.json` | Binds this local folder to script ID `11svChvnGoBUo3ifX822yAJ874MP_uoqelvnfZdooAWx88LoCynst-lZm`. |
-| `.claspignore` | Mirrors the default clasp ignore rules, keeping `node_modules`, `.git`, virtual environments, and other local-only files out of Apps Script pushes. |
-| `appsscript.json` | Apps Script manifest describing timezone, logging options, and runtime preferences. |
-| `Code.gs` | Contains `myFunction()` that logs “Hello, world!” when executed. |
+| Script | Description |
+| ------ | ----------- |
+| `npm run login` | Launches the local `@google/clasp` CLI login flow. |
+| `npm run pull` | Downloads the latest code from the bound Apps Script project. |
+| `npm run push` | Uploads local source files to Apps Script using the locally installed CLI. |
+| `npm run open` | Opens the associated Apps Script project in your browser. |
+| `npm run deploy` | Creates a deployment using the currently pushed version. |
 
-## Local development workflow
+All scripts use the locally installed `@google/clasp` binary, so a global installation is not required. If you prefer to keep using a global install, adjust the scripts accordingly.
 
-1. Install clasp globally if needed: `npm install -g @google/clasp`.
-2. Authenticate with Google: `clasp login`.
-3. Make changes to `Code.gs` or `appsscript.json` as required.
-4. Verify `.claspignore` covers any local folders you do not want to push.
-5. Deploy the updates to the bound script: `clasp push`.
+## TypeScript projects
 
-## Editing tips
-
-- Keep manifest changes in `appsscript.json` consistent with project requirements (timezone, add-on scopes, etc.).
-- Expand `Code.gs` with additional functions while preserving the `myFunction()` example for quick smoke tests.
-- Commit README updates alongside code changes so the diagrams accurately reflect the repository state.
+This repository is currently JavaScript-only. If you adopt TypeScript, follow the [google/clasp TypeScript template](https://github.com/google/clasp/tree/master/examples/typescript) by adding `npm run build` and `npm run watch` scripts that compile into a `dist/` directory. You can then modify `npm run push` to run the build step before calling `clasp push` to keep the deployment in sync with the compiled output.
