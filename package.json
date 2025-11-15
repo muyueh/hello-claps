@@ -6,6 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "login": "clasp login",
+    "login:no-localhost": "clasp login --no-localhost",
     "pull": "clasp pull",
     "push": "clasp push",
     "open": "clasp open",

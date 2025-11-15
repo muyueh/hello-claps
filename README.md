@@ -15,18 +15,23 @@ gitGraph LR
   checkout work
   commit id: "docs: add clasp credential troubleshooting"
   commit id: "chore: rebind clasp project"
+  commit id: "docs: document clasp credential persistence"
 ```
 
 ```mermaid
 stateDiagram-v2
   [*] --> LoggedOut
   LoggedOut --> LoggedIn: npm run login
+  LoggedIn --> LoggedInNoLocalhost: npm run login:no-localhost
+  LoggedInNoLocalhost --> LoggedIn: paste OAuth code
   LoggedIn --> Synced: npm run pull
   Synced --> ReadyToDeploy: npm run push
   ReadyToDeploy --> Deployed: npm run deploy
   Deployed --> Synced: iterate on scripts
   Synced --> LoginError: push without credentials
   LoginError --> LoggedIn: npm run login --creds <file>
+  LoggedIn --> CredentialsBackedUp: copy ~/.clasprc.json
+  CredentialsBackedUp --> Synced: npm run push
   ReadyToDeploy --> PermissionError: scriptId access denied
   PermissionError --> Synced: share script or update scriptId
 ```
@@ -38,6 +43,11 @@ sequenceDiagram
   participant Clasp as @google/clasp CLI
   participant Owner as Script Owner
   Dev->>NPM: npm run login (or -- --creds)
+  Dev->>NPM: npm run login:no-localhost
+  NPM->>Clasp: clasp login --no-localhost
+  Clasp-->>Dev: Provide copyable OAuth URL
+  Dev->>Owner: Complete browser auth & share returned code
+  Owner-->>Dev: Paste auth code into CLI
   NPM->>Clasp: clasp login
   Clasp-->>Dev: Authenticated?
   alt Credentials missing
@@ -64,7 +74,8 @@ flowchart LR
     D[Local Workspace]
     F[.clasp.json bound to 1t9viI7vAVlA_xmTFzcjB1N3RnRvWRu_lIUHybJ9BW4fgehTSz-rNREk5]
     S[npm scripts]
-    C[Credential Store]
+    C[Credential Store (~/.clasprc.json)]
+    B[Backed-up Credentials]
   end
   subgraph Google
     G[Apps Script Project]
@@ -73,6 +84,8 @@ flowchart LR
   D --> F --> S
   S --> C
   C --> S
+  C --> B
+  B --> C
   S --> G
   O --> G
   G --> O
@@ -84,8 +97,10 @@ flowchart LR
     direction TB
     A1[Update Apps Script files locally]
     A2[Confirm .clasp.json scriptId matches target project]
-    A3[Run npm run push]
-    A4[Re-authenticate if prompted]
+    A3[Run npm run login or npm run login:no-localhost]
+    A4[Back up ~/.clasprc.json]
+    A5[Run npm run push]
+    A6[Re-authenticate if prompted]
   end
   subgraph Frontend
     direction TB
@@ -103,8 +118,8 @@ flowchart LR
     direction TB
     D1[Share project with collaborating accounts]
   end
-  A1 --> A2 --> A3 --> B1 --> B2 --> C1 --> C3
-  A3 --> A4 --> C4
+  A1 --> A2 --> A3 --> A4 --> A5 --> B1 --> B2 --> C1 --> C3
+  A5 --> A6 --> C4
   D1 --> C2
   C2 --> C3
 ```
@@ -122,13 +137,22 @@ flowchart LR
    npm run login
    ```
 
-4. Once authenticated, use `npm run pull` to download the remote project or `npm run push` to upload your local changes.
+   If you cannot open a browser in your environment, run the headless variant:
+   ```bash
+   npm run login:no-localhost
+   ```
+   Copy the printed URL, open it in a browser, and paste the returned code back into the CLI prompt.
+
+4. After authentication, back up the credential file that clasp generates so you can restore it later. On most systems the file is stored at `~/.clasprc.json` (and `~/.clasprc.json.local` for additional profiles). Copy these files to a secure location that is **not** committed to version control.
+
+5. Once authenticated and backed up, use `npm run pull` to download the remote project or `npm run push` to upload your local changes.
 
 ## Available npm scripts
 
 | Script | Description |
 | ------ | ----------- |
 | `npm run login` | Launches the local `@google/clasp` CLI login flow. |
+| `npm run login:no-localhost` | Starts the `clasp login --no-localhost` flow and prints a copyable OAuth URL. |
 | `npm run login -- --creds credentials.json` | Uses a downloaded OAuth credentials file if browser-based login is unavailable. |
 | `npm run pull` | Downloads the latest code from the bound Apps Script project. |
 | `npm run push` | Uploads local source files to Apps Script using the locally installed CLI. |
@@ -144,6 +168,16 @@ If `npm run push` reports `No credentials found.`, re-run the login command. In 
 npm run login -- --creds path/to/credentials.json
 ```
 After successful login, retry `npm run push`.
+
+## Preserve your clasp login for future sessions
+
+Clasp stores OAuth tokens in `~/.clasprc.json`. To reuse the same login on another machine or after wiping the environment:
+
+1. After you authenticate, copy `~/.clasprc.json` (and `~/.clasprc.json.local` if it exists) to a private backup location outside your repository.
+2. When you return to the project, restore those files to the same paths **before** running any clasp commands.
+3. Ensure the file permissions restrict access to your user account, because the tokens grant Apps Script edit rights.
+
+If you accidentally delete the files, rerun `npm run login` or `npm run login:no-localhost` and create a fresh backup.
 
 ## Troubleshooting permission errors
 
