@@ -1,0 +1,17 @@
+{
+  "name": "hello-claps",
+  "version": "1.0.0",
+  "description": "Helper scripts for Google Apps Script projects managed with clasp.",
+  "license": "ISC",
+  "type": "commonjs",
+  "scripts": {
+    "login": "clasp login",
+    "pull": "clasp pull",
+    "push": "clasp push",
+    "open": "clasp open",
+    "deploy": "clasp deploy"
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.1.1"
+  }
+}
