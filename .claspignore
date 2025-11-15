@@ -1,0 +1,14 @@
+# Ignore everything by default
+**/**
+
+# Allow Apps Script manifests and source files
+!appsscript.json
+!**/*.gs
+!**/*.js
+!**/*.ts
+!**/*.html
+
+# Ignore common local-only directories
+.git/**
+node_modules/**
+.venv/**
