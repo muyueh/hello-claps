@@ -6,10 +6,13 @@
   "type": "commonjs",
   "scripts": {
     "login": "clasp login",
+    "login:no-localhost": "clasp login --no-localhost",
     "pull": "clasp pull",
     "push": "clasp push",
     "open": "clasp open",
-    "deploy": "clasp deploy"
+    "deploy": "clasp deploy",
+    "survey:create": "CI=1 clasp run createOrUpdateSurveySheet",
+    "survey:summary": "CI=1 clasp run runSurveyReport"
   },
   "devDependencies": {
     "@google/clasp": "^3.1.1"
